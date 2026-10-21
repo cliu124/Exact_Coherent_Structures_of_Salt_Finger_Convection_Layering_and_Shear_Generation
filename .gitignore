@@ -1,0 +1,5 @@
+/__pycache__
+/*.mp4
+/Samples/Rrho40_Ra1e5_Pr7_tau0.01/Lx0.6_DNS/snapshots/
+/Samples/Rrho40_Ra1e5_Pr7_tau0.01/Lx0.6_DNS_old/snapshots/
+/Readme.md

@@ -1,0 +1,35 @@
+---------------------------------
+--- Parameters ------------------
+---------------------------------
+Ra: 100000.0
+Pr: 7.0
+tau: 0.01
+Rrho: 40.0
+init_dt: 8e-05
+ext: .nc
+dim: 2
+sizes: (128, 128)
+bounds: (0.43, 1.0)
+bounded: False
+dealias: 1.5
+mode: ecs
+CFL: False
+initial dt: 8e-05
+ecs_odir: Lx0.43_Rrho40.0_PO2/
+tol: 1e-06
+max_iter: 20
+initial Tp: 0.05343483523769543
+trust radius: 20.0
+krylov_dim: 50
+krylov_dim_min: 5
+projectNeutralDrift: True
+computeStability: True
+Neigen: 60
+save_ecs_history: False
+save_snapshots: True
+save_flowproperties: True
+save_meanprofiles: False
+---------------------------------
+Starting Newton solver ...
+Initialization, Residual norm: 4.2330008794873486e-11, Tp: 0.05343483523769543
+Convergence achieved!

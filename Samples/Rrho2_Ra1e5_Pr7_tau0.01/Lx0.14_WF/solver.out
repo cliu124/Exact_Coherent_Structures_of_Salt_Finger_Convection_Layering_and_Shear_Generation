@@ -1,0 +1,22 @@
+---------------------------------
+--- Parameters ------------------
+---------------------------------
+Ra = 100000.0
+Pr = 7.0
+Ri = 1.0
+Rrho = 2.0
+Lambda = 2.0
+tau = 0.01
+NX = 192
+NZ = 192
+Lz = 1.0
+Lx = 0.14
+T0 = 0.2
+timestep = 0.0002
+trust radius = 20.0
+---------------------------------
+
+Tolerance threshold reached.
+Newton solver runtime = 7.478426876012236
+Solver converged with tolerance 9.70864456393556e-11
+Time: 566.5359375770204 seconds

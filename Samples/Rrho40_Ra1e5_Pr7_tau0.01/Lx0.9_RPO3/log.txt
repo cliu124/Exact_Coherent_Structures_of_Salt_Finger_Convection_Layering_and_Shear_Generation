@@ -1,0 +1,25 @@
+Projecting neutral drift: True
+---------------------------------
+--- Parameters ------------------
+---------------------------------
+Ra = 100000.0
+Pr = 7.0
+Ri = 1.0
+Rrho = 40.0
+Lambda = 2.0
+tau = 0.01
+NX = 192
+NZ = 192
+Lz = 1.0
+Lx = 0.9
+T0 = 0.019230802983534186
+ax0 = 0.5
+timestep = 0.0001
+trust radius = 100.0
+---------------------------------
+Tolerance threshold reached.
+Newton solver runtime = 3.5424712329986505
+Solver converged with tolerance 4.5540143127277186e-11
+Saving time-dependent solution ... done
+Solving linear stability problem around converged solution ...
+Time: 310.63475752598606 seconds

@@ -1,0 +1,50 @@
+---------------------------------
+--- Parameters ------------------
+---------------------------------
+Ra: 100000.0
+Pr: 7.0
+tau: 0.01
+Rrho: 40.0
+init_dt: 0.0002
+ext: .nc
+dim: 2
+sizes: (128, 128)
+bounds: (0.6, 1.0)
+bounded: False
+dealias: 1.5
+mode: ecs
+CFL: True
+initial dt: 0.0002
+symmetry: [1.0 -1.0 1.0 -1.0 0.0 0.0 0.0]
+ecs_odir: Lx0.6_Rrho40.0_sM3_low/
+tol: 1e-09
+max_iter: 20
+initial Tp: 0.2
+trust radius: 20.0
+krylov_dim: 50
+krylov_dim_min: 20
+projectNeutralDrift: True
+computeStability: True
+Neigen: 60
+save_ecs_history: False
+save_snapshots: False
+save_flowproperties: True
+save_meanprofiles: False
+---------------------------------
+Starting Newton solver ...
+Initialization, Residual norm: 2.4043875189634663
+Iteration 0, Residual norm: 0.016316842048841415, ||x||: 51.57992908195188, GMRES error: 2.70229079229158e-11, trust radius: 20.0
+Iteration 1, Residual norm: 7.258714785220833e-06, ||x||: 51.566475051637894, GMRES error: 5.2437828229754404e-12, trust radius: 20.0
+Iteration 2, Residual norm: 2.0775957303966292e-07, ||x||: 51.56643476305061, GMRES error: 4.3165080821251265e-14, trust radius: 20.0
+Iteration 3, Residual norm: 9.703101398192425e-08, ||x||: 51.566431510309684, GMRES error: 9.415201889477268e-15, trust radius: 20.0
+Iteration 4, Residual norm: 4.5022107502292346e-08, ||x||: 51.566421393961726, GMRES error: 2.026703301106156e-15, trust radius: 20.0
+Iteration 5, Residual norm: 2.4974127547527156e-08, ||x||: 51.56642113840816, GMRES error: 6.237037602243672e-16, trust radius: 20.0
+Iteration 6, Residual norm: 1.4533482333836888e-08, ||x||: 51.566419893903856, GMRES error: 2.1123723241883456e-16, trust radius: 20.0
+Iteration 7, Residual norm: 9.34053692531242e-09, ||x||: 51.56641932015763, GMRES error: 8.725040862329054e-17, trust radius: 20.0
+Iteration 8, Residual norm: 6.945732908375206e-09, ||x||: 51.566418984562276, GMRES error: 4.824341879122641e-17, trust radius: 20.0
+Iteration 9, Residual norm: 5.429472798984934e-09, ||x||: 51.56641873342897, GMRES error: 2.947957712483095e-17, trust radius: 20.0
+Iteration 10, Residual norm: 3.922270592745835e-09, ||x||: 51.566418438760145, GMRES error: 1.5384367101012343e-17, trust radius: 20.0
+Iteration 11, Residual norm: 2.131931305323848e-09, ||x||: 51.56641825546295, GMRES error: 4.544929920472102e-18, trust radius: 20.0
+Iteration 12, Residual norm: 1.1754865558397497e-09, ||x||: 51.56641812100107, GMRES error: 1.3818009951919438e-18, trust radius: 20.0
+Iteration 13, Residual norm: 7.285872398919549e-10, ||x||: 51.56641810121729, GMRES error: 5.308262175119595e-19, trust radius: 20.0
+Convergence achieved!

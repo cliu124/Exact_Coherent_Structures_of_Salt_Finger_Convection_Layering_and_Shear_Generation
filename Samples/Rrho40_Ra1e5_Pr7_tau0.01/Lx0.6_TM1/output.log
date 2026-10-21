@@ -1,0 +1,41 @@
+---------------------------------
+--- Parameters ------------------
+---------------------------------
+Ra: 100000.0
+Pr: 7.0
+tau: 0.01
+Rrho: 40.0
+init_dt: 0.0002
+ext: .nc
+dim: 2
+sizes: (128, 128)
+bounds: (0.6, 1.0)
+bounded: False
+dealias: 1.5
+mode: ecs
+CFL: True
+initial dt: 0.0002
+symmetry: [1.0 -1.0 1.0 1.0 0.0 0.0 0.0]
+ecs_odir: Lx0.6_Rrho40.0_TM1_pix/
+tol: 1e-09
+max_iter: 20
+initial Tp: 0.2
+trust radius: 20.0
+krylov_dim: 50
+krylov_dim_min: 20
+projectNeutralDrift: True
+computeStability: True
+Neigen: 60
+save_ecs_history: False
+save_snapshots: False
+save_flowproperties: True
+save_meanprofiles: False
+---------------------------------
+Starting Newton solver ...
+Initialization, Residual norm: 6.359933734187127, az: -0.2446059566700214
+Iteration 0, Residual norm: 0.053335853470716815, ||x||: 202.26973217408303, GMRES error: 6.22939885669318e-12, trust radius: 20.0, az: -0.2446378367450029
+Iteration 1, Residual norm: 1.4591655492951577e-05, ||x||: 202.24394364727672, GMRES error: 4.4327001922717955e-11, trust radius: 20.0, az: -0.24463608464273429
+Iteration 2, Residual norm: 1.2299667899245646e-07, ||x||: 202.24389427171639, GMRES error: 1.5030554455417773e-14, trust radius: 20.0, az: -0.24463599304380623
+Iteration 3, Residual norm: 2.147052910543735e-09, ||x||: 202.243894728639, GMRES error: 4.497992689690376e-18, trust radius: 20.0, az: -0.24463599362080016
+Iteration 4, Residual norm: 4.7660296245527145e-11, ||x||: 202.2438947314291, GMRES error: 2.3462935048554033e-21, trust radius: 20.0, az: -0.24463599362935448
+Convergence achieved!

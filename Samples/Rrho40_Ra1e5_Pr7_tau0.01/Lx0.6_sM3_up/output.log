@@ -1,0 +1,40 @@
+---------------------------------
+--- Parameters ------------------
+---------------------------------
+Ra: 100000.0
+Pr: 7.0
+tau: 0.01
+Rrho: 40.0
+init_dt: 0.0002
+ext: .nc
+dim: 2
+sizes: (128, 128)
+bounds: (0.6, 1.0)
+bounded: False
+dealias: 1.5
+mode: ecs
+CFL: True
+initial dt: 0.0002
+symmetry: [1.0 -1.0 1.0 -1.0 0.0 0.0 0.0]
+ecs_odir: Lx0.6_Rrho40.0_sM3_up/
+tol: 1e-09
+max_iter: 20
+initial Tp: 0.2
+trust radius: 20.0
+krylov_dim: 50
+krylov_dim_min: 20
+projectNeutralDrift: True
+computeStability: True
+Neigen: 60
+save_ecs_history: False
+save_snapshots: False
+save_flowproperties: True
+save_meanprofiles: False
+---------------------------------
+Starting Newton solver ...
+Initialization, Residual norm: 4.891850972126334
+Iteration 0, Residual norm: 0.09629114875440326, ||x||: 115.51062821350108, GMRES error: 2.5515889856921157e-15, trust radius: 20.0
+Iteration 1, Residual norm: 0.00010734235956170409, ||x||: 115.4846681244779, GMRES error: 5.787845529026384e-16, trust radius: 20.0
+Iteration 2, Residual norm: 1.4923511635073067e-09, ||x||: 115.48446549524868, GMRES error: 1.8609100621220725e-18, trust radius: 20.0
+Iteration 3, Residual norm: 2.1501262299096434e-12, ||x||: 115.48446551108394, GMRES error: 4.384345848252078e-24, trust radius: 20.0
+Convergence achieved!
