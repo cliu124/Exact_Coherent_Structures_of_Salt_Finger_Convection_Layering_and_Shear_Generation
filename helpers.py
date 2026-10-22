@@ -217,7 +217,7 @@ def get_bifurcation(folder_path, mu = "mu", response="Sh", is_po=False):
         
         stability[element], growthrate[element] = check_stability(folder_path+dir_element+"stability/growthrate.mtx")
         
-        print(f"        Processed element {element+1} in {dir_element}: {mu}={mu_list[element]}, {response}={response_list[element]}, stability={'unstable' if stability[element] else 'stable'}, growthrate={growthrate[element]}")
+        # print(f"        Processed element {element+1} in {dir_element}: {mu}={mu_list[element]}, {response}={response_list[element]}, stability={'unstable' if stability[element] else 'stable'}, growthrate={growthrate[element]}")
 
     return mu_list, response_list, stability, growthrate
 
@@ -275,6 +275,9 @@ def bifurcation_diagram(data_path, mu = "mu", response="Sh"):
         scatter_first_point = branch_info.get('scatter_first_point', False)
         scatter_end_point = branch_info.get('scatter_end_point', False)
         scatter_stability_change = branch_info.get('scatter_stability_change', False)
+        steady_bifur_points = branch_info.get('steady_bifur_points', True)
+        hopf_bifur_points = branch_info.get('hopf_bifur_points', True)
+
         for subdir, subsubdir in branch_info.items():
             # Skip metadata keys during directory parsing
             if subdir == 'color' \
@@ -282,7 +285,8 @@ def bifurcation_diagram(data_path, mu = "mu", response="Sh"):
                 or subdir == 'isPO' \
                 or subdir == 'showLabel' \
                 or subdir == 'merge_start' or subdir == 'merge_end' \
-                or subdir == 'scatter_first_point' or subdir == 'scatter_end_point' or subdir == 'scatter_stability_change':
+                or subdir == 'scatter_first_point' or subdir == 'scatter_end_point' \
+                or subdir == 'scatter_stability_change' or subdir == 'steady_bifur_points' or subdir == 'hopf_bifur_points':
                 continue
             print(f"Loading {key} data from {subdir}...")
             # mu_list, response_list = [], []
@@ -341,7 +345,9 @@ def bifurcation_diagram(data_path, mu = "mu", response="Sh"):
             'merge_end': merge_end,
             'scatter_first_point': scatter_first_point,
             'scatter_end_point': scatter_end_point,
-            'scatter_stability_change': scatter_stability_change
+            'scatter_stability_change': scatter_stability_change,
+            'steady_bifur_points': steady_bifur_points,
+            'hopf_bifur_points': hopf_bifur_points
         }
     return data
 
@@ -392,7 +398,9 @@ def add_scatter_bifurcation_points(ax,
                                    hopf_edgecolors='k',
                                    edgecolors='k',
                                    s=20,
-                                   lw=1.):
+                                   lw=1.,
+                                   steady_bifur_points=True,
+                                   hopf_bifur_points=True):
     def break_stability_eigen(a, b):
         if a.real*b.real < 0:
             return True
@@ -408,10 +416,70 @@ def add_scatter_bifurcation_points(ax,
         return False
     for i in range(len(mu)-1):
         if break_stability(stability[i],stability[i+1]):
-            if Hopf_bifurcation(leading_eigen[i],leading_eigen[i+1]):
-                ax.scatter(mu[i+1],refes[i+1],marker=marker_hopf,s=s,linewidths=lw, color=color, edgecolors=hopf_edgecolors, zorder=2)
-            else:
-                ax.scatter(mu[i+1],refes[i+1],marker=marker,s=s,linewidths=lw, color=color, edgecolors=edgecolors, zorder=2)
+            if hopf_bifur_points and Hopf_bifurcation(leading_eigen[i],leading_eigen[i+1]):
+                ax.scatter(mu[i],refes[i],marker=marker_hopf,s=s,linewidths=lw, color=color, edgecolors=hopf_edgecolors, zorder=2)
+            elif steady_bifur_points:
+                ax.scatter(mu[i],refes[i],marker=marker,s=s,linewidths=lw, color=color, edgecolors=edgecolors, zorder=2)
+
+def plot_scatter_for_stability_change(ax, 
+                                      data, 
+                                      marker_hopf='d', 
+                                      color_hopf='k', 
+                                      marker='o', 
+                                      color='k', 
+                                      s=20, 
+                                      lw=1.):
+    for key, branch_info in data.items():
+        if branch_info.get('scatter_stability_change', False):
+            steady_bifur_points = branch_info.get('steady_bifur_points', False)
+            hopf_bifur_points = branch_info.get('hopf_bifur_points', False)
+            add_scatter_bifurcation_points(ax, 
+                                        mu=data[key]['mu'], 
+                                        refes=data[key]['response'],
+                                        stability=data[key]['Stability'], 
+                                        leading_eigen=data[key]['Growthrate'],
+                                        marker_hopf=marker_hopf, 
+                                        marker=marker,
+                                        color='none',
+                                        hopf_edgecolors=color_hopf, 
+                                        edgecolors='k', 
+                                        s=s,
+                                        lw=lw,
+                                        steady_bifur_points=steady_bifur_points,
+                                        hopf_bifur_points=hopf_bifur_points)
+
+def plot_scatter_for_first_point(ax, data, marker='o', color='k', s=20, lw=1.):
+    for key, branch_info in data.items():
+        PO_branch = branch_info.get('isPO', False)
+        scatter_first_point = branch_info.get('scatter_first_point', False)
+        local_scatter_first_enabled = scatter_first_point[0] if isinstance(scatter_first_point, tuple) and len(scatter_first_point) > 0 else scatter_first_point
+        local_marker  = scatter_first_point[1] if isinstance(scatter_first_point, tuple) and len(scatter_first_point) > 1 else marker
+        local_color   = scatter_first_point[2] if isinstance(scatter_first_point, tuple) and len(scatter_first_point) > 2 else color
+        if local_scatter_first_enabled:
+            # print(f"Branch {key}, first-point scatter {scatter_first_point} local_marker={local_marker} and local_color={local_color}")
+            add_scatter_first_point(ax, 
+                                    mu=data[key]['mu'], 
+                                    refes=data[key]['response'][:,0] if PO_branch else data[key]['response'],
+                                    marker=local_marker, 
+                                    color='none', 
+                                    edgecolors=local_color, 
+                                    s=s,
+                                    lw=lw)
+            
+        scatter_end_point = branch_info.get('scatter_end_point', False)
+        local_scatter_end_enabled = scatter_end_point[0] if isinstance(scatter_end_point, tuple) and len(scatter_end_point) > 0 else scatter_end_point
+        local_marker  = scatter_end_point[1] if isinstance(scatter_end_point, tuple) and len(scatter_end_point) > 1 else marker
+        local_color   = scatter_end_point[2] if isinstance(scatter_end_point, tuple) and len(scatter_end_point) > 2 else color
+        if local_scatter_end_enabled:
+            # print(f"Branch {key}, end-point scatter local_marker={local_marker} and local_color={local_color}")
+            add_scatter_first_point(ax, 
+                                    mu=data[key]['mu'][::-1], 
+                                    refes=data[key]['response'][::-1][:,0] if PO_branch else data[key]['response'][::-1],
+                                    marker=local_marker, 
+                                    color='none', 
+                                    edgecolors=local_color, 
+                                    s=s,
+                                    lw=lw)
 
 def add_scatter_first_point(ax,
                             mu,
@@ -430,41 +498,3 @@ def add_scatter_first_point(ax,
                facecolors=color, 
                edgecolors=edgecolors, 
                zorder=2)
-
-def plot_scatter_for_stability_change(ax, data, marker_hopf='d', color_hopf='k', marker='o', color='k', s=20, lw=1.):
-    for key, branch_info in data.items():
-        if branch_info.get('scatter_stability_change', False):
-            add_scatter_bifurcation_points(ax, 
-                                        mu=data[key]['mu'], 
-                                        refes=data[key]['response'],
-                                        stability=data[key]['Stability'], 
-                                        leading_eigen=data[key]['Growthrate'],
-                                        marker_hopf=marker_hopf, 
-                                        marker=marker,
-                                        color='none',
-                                        hopf_edgecolors=color_hopf, 
-                                        edgecolors='k', 
-                                        s=s,
-                                            lw=lw)
-
-def plot_scatter_for_first_point(ax, data, marker='o', color='k', s=20, lw=1.):
-    for key, branch_info in data.items():
-        if branch_info.get('scatter_first_point', False):
-            add_scatter_first_point(ax, 
-                                    mu=data[key]['mu'], 
-                                    refes=data[key]['response'],
-                                    marker=marker, 
-                                    color='none', 
-                                    edgecolors=color, 
-                                    s=s,
-                                    lw=lw)
-        if branch_info.get('scatter_end_point', False):
-            add_scatter_first_point(ax, 
-                                    mu=data[key]['mu'][::-1], 
-                                    refes=data[key]['response'][::-1],
-                                    marker=marker, 
-                                    color='none', 
-                                    edgecolors=color, 
-                                    s=s,
-                                    lw=lw)
-        
