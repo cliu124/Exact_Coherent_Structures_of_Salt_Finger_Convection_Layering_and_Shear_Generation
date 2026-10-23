@@ -2,7 +2,12 @@ This is data and post-processing code for the paper "Exact Coherent Structures o
 
 Because the storage limit, we do not provide data for making supplementary videos. To avoid Windows path-length limit (Error 0x80010135) when extracting zip file, we highly recommend downloading data via Github clone.
 
-Also, you need to install Git LFS (used to save large files on Github) to load full large files from github to your computer after cloning.
+```bash
+# clone data [run this in WSL terminal, via VScode]
+git clone https://github.com/duc-nguyen1410/Exact_Coherent_Structures_of_Salt_Finger_Convection_Layering_and_Shear_Generation.git
+```
+
+<!-- Also, you need to install Git LFS (used to save large files on Github) to load full large files from github to your computer after cloning.
 ```bash
 # step 1: clone data, large files will be saved by pointers instead of real files. [run this in WSL terminal, via VScode]
 git clone https://github.com/duc-nguyen1410/Exact_Coherent_Structures_of_Salt_Finger_Convection_Layering_and_Shear_Generation.git
@@ -11,7 +16,7 @@ git clone https://github.com/duc-nguyen1410/Exact_Coherent_Structures_of_Salt_Fi
 git lfs install # install if needed
 cd Exact_Coherent_Structures_of_Salt_Finger_Convection_Layering_and_Shear_Generation
 git lfs pull  # this downloads the actual large files
-```
+``` -->
 
 Running Jupyter notebooks requires some libraries:
 ```bash
