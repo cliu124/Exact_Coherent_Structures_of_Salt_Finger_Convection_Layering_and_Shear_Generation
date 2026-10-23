@@ -1,3 +1,6 @@
 /__pycache__
 /Samples/Rrho40_Ra1e5_Pr7_tau0.01/Lx0.6_DNS/snapshots/
-/Samples/Rrho40_Ra1e5_Pr7_tau0.01/Lx0.6_DNS_old/snapshots/
+/Samples/Rrho40_Ra1e5_Pr7_tau0.01/Lx0.6_DNS/meanprofiles/
+/Samples/Rrho40_Ra1e5_Pr7_tau0.01/Lx0.6_DNS_old/
+/_recompute_flow_properties_dns.py
+/_plot_snapshots.py

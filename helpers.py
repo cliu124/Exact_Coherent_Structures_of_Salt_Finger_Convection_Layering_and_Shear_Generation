@@ -70,7 +70,7 @@ def return_fields(file_path):
             w = h5f['w'][:] # z-velocity
             return x.ravel(),z.ravel(), te, sa, u, w
 
-def plot_sample(path, name,color_surface = 'PuOr_r',color_S = 'r', plot_mean_profiles=True, symmetric=False):
+def plot_sample(path, name=None,color_surface = 'PuOr_r',color_S = 'r', plot_mean_profiles=True, symmetric=False):
     fig, ax = plt.subplots(figsize = (3,3))
     [x,z,_,s,_,_]=return_fields(path)
     minvalue = np.min(s)
@@ -91,7 +91,7 @@ def plot_sample(path, name,color_surface = 'PuOr_r',color_S = 'r', plot_mean_pro
         axs.set_yticks([])
         
     fig.tight_layout()
-    fig.savefig(name, dpi=300, bbox_inches='tight')
+    if name is not None: fig.savefig(name, dpi=300, bbox_inches='tight')
     plt.show()
     plt.close()
 
@@ -117,22 +117,20 @@ def load_energy_dns(file_pattern,xlabel='D',ylabel='I'):
     
     if not files:
         raise FileNotFoundError(f"No files found matching pattern: {file_pattern}")
-        
+
     t_list, D_list, I_list = [], [], []
-    
+
     for fname in files:
         with h5py.File(fname, 'r') as f:
             t_list.append(f['scales/sim_time'][:])
             D_list.append(f[f'tasks/{xlabel}'][:])
             I_list.append(f[f'tasks/{ylabel}'][:])
-            
     t = np.concatenate(t_list, axis=0).ravel()
     D = np.concatenate(D_list, axis=0).ravel().real
     I = np.concatenate(I_list, axis=0).ravel().real
     
     # Sort arrays by simulation time
     sort_order = np.argsort(t)
-    
     return D[sort_order], I[sort_order]
 
 def load_snapshot_dns(file_pattern,field='sa'):
