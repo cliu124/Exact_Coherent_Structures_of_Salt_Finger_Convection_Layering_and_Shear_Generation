@@ -1,6 +1,6 @@
 This is data and post-processing code for the paper "Exact Coherent Structures of Salt-Finger Convection: Layering and Shear Generation".
 
-Because the storage limit, we do not provide data for making supplementary videos. To avoid Windows path-length limit (Error 0x80010135) when extracting zip file, we highly recommend downloading data via Github clone.
+Because the storage limit, we do not provide data for making supplementary video S5 (`Fig3a_video.ipynb`). To avoid Windows path-length limit (Error 0x80010135) when extracting zip file, we highly recommend downloading data via Github clone.
 
 ```bash
 # clone data [run this in WSL terminal, via VScode]
