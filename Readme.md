@@ -30,3 +30,10 @@ pip install numpy matplotlib scipy pandas jupyter ipykernel netCDF4 h5py
 ## please select exact python kernel when running notebook. 
 # for example, here select kernel "test-env", or use your available python kernel
 ```
+
+We save information of each bifurcation in `csv` files with the following format:
+```
+Lx,Sh,is_stable,growthrate_real,growthrate_imag,Tp,ax,az
+...
+```
+Here, columns from left to right present the continuous parameter `Lx`, the response in bifurcation diagram `Sh`, the stability of solution (`True`: unstable, `False`: stable), real and imaginary parts of fastest growth rate `growthrate_real`/`growthrate_imag` and optional quantities: time period `Tp`, horizontal translation `ax` normalized by domain width $L_x$, vertical translation `az` normalized by domain height $L_z$.

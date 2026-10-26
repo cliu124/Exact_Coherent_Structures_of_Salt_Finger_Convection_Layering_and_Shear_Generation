@@ -42,11 +42,19 @@ def load_file(path):
     return None
 
 def return_coordinates(file_path):
-  with nc.Dataset(file_path, 'r') as ncf:
-    x = ncf.variables['x'][:]  # grid coordinates
-    z = ncf.variables['z'][:]
-    return x.ravel(), z.ravel()
-
+    if file_path.endswith('.nc'):
+        with nc.Dataset(file_path, 'r') as ncf:
+            x = ncf.variables['x'][:]  # grid coordinates
+            z = ncf.variables['z'][:]
+            return x.ravel(), z.ravel()
+    elif file_path.endswith('.h5'):
+        with h5py.File(file_path, 'r') as h5f:
+            if 'x' in h5f: x = h5f['x'][:]
+            elif 'xg' in h5f: x = h5f['xg'][:] # grid coordinates
+            if 'z' in h5f: z = h5f['z'][:]
+            elif 'zg' in h5f: z = h5f['zg'][:]
+            return x.ravel(),z.ravel()
+        
 def return_fields(file_path):
     if file_path.endswith('.nc'):
         with nc.Dataset(file_path, 'r') as ncf:
@@ -70,7 +78,8 @@ def return_fields(file_path):
             w = h5f['w'][:] # z-velocity
             return x.ravel(),z.ravel(), te, sa, u, w
 
-def plot_sample(path, name=None,color_surface = 'PuOr_r',color_S = 'r', plot_mean_profiles=True, symmetric=False):
+def plot_sample(path, name=None, color_surface = 'PuOr_r',color_S = 'r', 
+                plot_mean_profiles=True, symmetric=False):
     fig, ax = plt.subplots(figsize = (3,3))
     [x,z,_,s,_,_]=return_fields(path)
     minvalue = np.min(s)
@@ -165,8 +174,59 @@ def load_snapshot_dns(file_pattern,field='sa'):
     
     return x, z, t_list[sort_order], snapshot_list[sort_order]
 
-################# 
-#### Loading bifurcation data from HDF5 files
+
+##########################################
+###### Load bifurcation information ######
+
+def get_bifurcation(folder_path, mu = "mu", response="Sh", relativeX=False, relativeZ=False, periodicOrbit=False):
+    if os.path.isfile(os.path.join(folder_path, "flow_properties.txt")):
+        df0 = pd.read_csv(os.path.join(folder_path, "flow_properties.txt"), skipinitialspace=True)
+    elif os.path.isfile(os.path.join(folder_path, "flow_properties.csv")):
+        df0 = pd.read_csv(os.path.join(folder_path, "flow_properties.csv"), skipinitialspace=True)
+    elif os.path.isfile(os.path.join(folder_path, "continuation.txt")):
+        df0 = pd.read_csv(os.path.join(folder_path, "continuation.txt"), skipinitialspace=True)
+    else:
+        print(f"Warning: {folder_path}flow_properties.txt or flow_properties.csv or continuation.txt not found.")
+        return [], [], [], []
+    
+    # print(df0.columns)
+    mu_list = df0[mu] if mu in df0.columns else df0[df0.columns[0]]
+    if periodicOrbit:
+        response_list = np.zeros((len(mu_list),2))
+    else:
+        response_list = df0[response] if response in df0.columns else np.zeros(len(mu_list))
+    
+    dir_list = df0["dir"]
+    dir_list = [s.strip() for s in dir_list]
+
+    stability = np.zeros(len(mu_list), dtype=bool)
+    growthrate = np.zeros(len(mu_list), dtype=np.complex128)
+
+    # Initialize all optional outputs as None
+    Tp = None
+    ax = None
+    az = None
+    # print(f"df0.columns = {df0.columns}")
+    if relativeX or relativeZ or periodicOrbit:
+        Tp = df0["Tp"] if "Tp" in df0.columns else np.full(len(mu_list), 0.2)
+    if relativeX:
+        ax = df0["ax"] if "ax" in df0.columns else None
+    if relativeZ:
+        az = df0["az"] if "az" in df0.columns else None
+        
+    file_path = "/time-dependent/full_solution/full_solution_s1.h5" if os.path.isdir(folder_path+"search-0/time-dependent/") else "/flowproperties/flowproperties_s1.h5"
+    
+    for element, dir_element in enumerate(dir_list):
+        if periodicOrbit:
+            with h5py.File(folder_path+dir_element+file_path, mode='r') as file:
+                response_data = file['tasks'][response][:]
+            response_list[element,0] = min(np.array(response_data[:,0,0].real))
+            response_list[element,1] = max(np.array(response_data[:,0,0].real))
+        stability[element], growthrate[element] = check_stability(folder_path+dir_element+"stability/growthrate.mtx")
+        # print(f"        Processed element {element+1} in {dir_element}: {mu}={mu_list[element]}, {response}={response_list[element]}, stability={'unstable' if stability[element] else 'stable'}, growthrate={growthrate[element]}")
+
+    return mu_list,response_list,stability,growthrate,Tp,ax,az
+
 def check_stability(growth_rates_path):
     if not os.path.exists(growth_rates_path):
         print(f"Warning: {growth_rates_path} not found.")
@@ -180,319 +240,250 @@ def check_stability(growth_rates_path):
         return True, fastest_growth_rate
     else:
         return False, fastest_growth_rate
-    
-def get_bifurcation(folder_path, mu = "mu", response="Sh", is_po=False):
-    if os.path.isfile(os.path.join(folder_path, "flow_properties.txt")):
-        df0 = pd.read_csv(os.path.join(folder_path, "flow_properties.txt"), skipinitialspace=True)
-    elif os.path.isfile(os.path.join(folder_path, "flow_properties.csv")):
-        df0 = pd.read_csv(os.path.join(folder_path, "flow_properties.csv"), skipinitialspace=True)
-    elif os.path.isfile(os.path.join(folder_path, "continuation.txt")):
-        df0 = pd.read_csv(os.path.join(folder_path, "continuation.txt"), skipinitialspace=True)
-    else:
-        print(f"Warning: {folder_path}flow_properties.txt or flow_properties.csv or continuation.txt not found.")
-        return [], [], [], []
-    
-    # print(df0.columns)
-    mu_list = df0[mu] if mu in df0.columns else df0[df0.columns[0]]
-    if is_po:
-        response_list = np.zeros((len(mu_list),2))
-    else:
-        response_list = df0[response] if response in df0.columns else np.zeros(len(mu_list))
-    
-    dir_list = df0["dir"]
-    dir_list = [s.strip() for s in dir_list]
 
-    stability = np.zeros(len(mu_list), dtype=bool)
-    growthrate = np.zeros(len(mu_list), dtype=np.complex128)
-    file_path = "/time-dependent/full_solution/full_solution_s1.h5" if os.path.isdir(folder_path+"search-0/time-dependent/") else "/flowproperties/flowproperties_s1.h5"
-    
-    for element, dir_element in enumerate(dir_list):
-        if is_po:
-            with h5py.File(folder_path+dir_element+file_path, mode='r') as file:
-                response_data = file['tasks'][response][:]
-            response_list[element,0] = min(np.array(response_data[:,0,0].real))
-            response_list[element,1] = max(np.array(response_data[:,0,0].real))
+def load_bifurcation_info(path_dict, mu='Lx', response='Sh', relativeX=False, relativeZ=False, periodicOrbit=False, save_csv=None):
+    mu_list, response_list, is_stable_list, growthrate_list = [], [], [], []
+     # use these for traveling waves and relative periodic orbits
+    Tp_list = [] if relativeX or relativeZ or periodicOrbit else None
+    ax_list = [] if relativeX else None
+    az_list = [] if relativeZ else None
+
+    for dir, start, end, upward in path_dict:
+        print(f"    Loading continuation data from {dir}...")
+        mu_slice,response_slice,is_stable_slice,growthrate_slice,Tp_slice,ax_slice,az_slice = get_bifurcation(folder_path=dir, 
+                                            mu=mu, 
+                                            response=response, 
+                                            relativeX=relativeX, relativeZ=relativeZ, 
+                                            periodicOrbit=periodicOrbit)
+        mu_slice = mu_slice[start:end] if upward else mu_slice[start:end][::-1]
+        response_slice = response_slice[start:end] if upward else response_slice[start:end][::-1]
+        is_stable_slice = is_stable_slice[start:end] if upward else is_stable_slice[start:end][::-1]
+        growthrate_slice = growthrate_slice[start:end] if upward else growthrate_slice[start:end][::-1]
+        if relativeX or relativeZ or periodicOrbit: Tp_slice = Tp_slice[start:end] if upward else Tp_slice[start:end][::-1]
+        if relativeX: ax_slice = ax_slice[start:end] if upward else ax_slice[start:end][::-1]
+        if relativeZ: az_slice = az_slice[start:end] if upward else az_slice[start:end][::-1]
         
-        stability[element], growthrate[element] = check_stability(folder_path+dir_element+"stability/growthrate.mtx")
-        
-        # print(f"        Processed element {element+1} in {dir_element}: {mu}={mu_list[element]}, {response}={response_list[element]}, stability={'unstable' if stability[element] else 'stable'}, growthrate={growthrate[element]}")
+        mu_list.extend(mu_slice)
+        response_list.extend(response_slice)
+        is_stable_list.extend(is_stable_slice)
+        growthrate_list.extend(growthrate_slice)
+        if relativeX or relativeZ or periodicOrbit: Tp_list.extend(Tp_slice)
+        if relativeX: ax_list.extend(ax_slice)
+        if relativeZ: az_list.extend(az_slice)
+    is_stable_list = ~np.array(is_stable_list)
+    print("")
+    # save data of bifurcation to csv file
+    if save_csv is not None:
+        data2csv(save_csv,mu_list,response_list,is_stable_list,growthrate_list,
+                 Tp_list,ax_list,az_list,
+                 mu=mu,response=response)
+    return mu_list,response_list,is_stable_list,growthrate_list,Tp_list,ax_list,az_list
 
-    return mu_list, response_list, stability, growthrate
+def merge_branch(mu_list,response_list,is_stable_list,growthrate_list,Tp_list,ax_list,az_list,
+                 type='first'):
+    """ type = 'first'/'last'/'both' """
+    response_array = np.array(response_list)
+    if response_array.ndim == 2:  # periodic orbit case
+        # add one more point to connect two min. and max. branch of PO
+        if type == 'first':
+            mu_list = np.concatenate([[mu_list[0]-(mu_list[1]-mu_list[0])], mu_list])
+            val = 0.5 * (response_list[0, 0] + response_list[0, 1])
+            response_list = np.concatenate([[[val, val]],response_list], axis=0)
+            is_stable_list = np.concatenate([[is_stable_list[0]], is_stable_list])
+            growthrate_list = np.concatenate([[growthrate_list[0]], growthrate_list])
+            if Tp_list is not None:
+                Tp_list = np.concatenate([[Tp_list[0]], Tp_list])
+            if ax_list is not None:
+                ax_list = np.concatenate([[ax_list[0]], ax_list])
+            if az_list is not None:
+                az_list = np.concatenate([[az_list[0]], az_list])
+        elif type == 'last':
+            mu_list = np.concatenate([mu_list, [mu_list[-1]-(mu_list[-2]-mu_list[-1])]])
+            val = 0.5 * (response_list[-1, 0] + response_list[-1, 1])
+            response_list = np.concatenate([response_list, [[val, val]]],axis=0)
+            is_stable_list = np.concatenate([is_stable_list, [is_stable_list[-1]]])
+            growthrate_list = np.concatenate([growthrate_list, [growthrate_list[-1]]])
+            if Tp_list is not None:
+                Tp_list = np.concatenate([Tp_list, [Tp_list[-1]]])
+            if ax_list is not None:
+                ax_list = np.concatenate([ax_list, [ax_list[-1]]])
+            if az_list is not None:
+                az_list = np.concatenate([az_list, [az_list[-1]]])
+        elif type == 'both':
+            mu_list, response_list, is_stable_list, growthrate_list, Tp_list, ax_list, az_list = \
+                merge_branch(mu_list, response_list, is_stable_list, growthrate_list, Tp_list, ax_list, az_list, type='first')
+            mu_list, response_list, is_stable_list, growthrate_list, Tp_list, ax_list, az_list = \
+                merge_branch(mu_list, response_list, is_stable_list, growthrate_list, Tp_list, ax_list, az_list, type='last')
+    return mu_list,response_list,is_stable_list,growthrate_list,Tp_list,ax_list,az_list
 
-def separate_into_segments(mu,refes,isunstable):
-    # Initialize lists for segments
-    segments = []
-    current_segment = {'mu': [], 'refes': [], 'isunstable': isunstable[0]}
-    # Separate the data into segments based on the condition
-    for i in range(len(mu)):
-        if isunstable[i] == current_segment['isunstable']:
-            current_segment['mu'].append(mu[i])
-            current_segment['refes'].append(refes[i])
-        else:
-            segments.append(current_segment)
-            current_segment = {'mu': [mu[i-1], mu[i]], 'refes': [refes[i-1], refes[i]], 'isunstable': isunstable[i]}
-    segments.append(current_segment)
-    return segments
+def reduce_branch(mu_list,response_list,is_stable_list,growthrate_list,Tp_list,ax_list,az_list,
+           first_idx=0, last_idx=None):
+    return mu_list[first_idx:last_idx], response_list[first_idx:last_idx],\
+            is_stable_list[first_idx:last_idx], growthrate_list[first_idx:last_idx],\
+            Tp_list[first_idx:last_idx] if Tp_list is not None else None,\
+            ax_list[first_idx:last_idx] if ax_list is not None else None,\
+            az_list[first_idx:last_idx] if az_list is not None else None
 
-def plot_bifurcation(ax,mu,refes,isunstable,label=None,color='k',unstableline="dashed",lw=2,alpha=1):
-    segments = separate_into_segments(mu,refes,isunstable)
+def remove_base_cond_flux(mu_list,response_list,is_stable_list,growthrate_list,Tp_list,ax_list,az_list):
+    return mu_list,np.array(response_list)-1.0,is_stable_list,growthrate_list,Tp_list,ax_list,az_list
+
+
+def data2csv(filename,mu_list,response_list,is_stable_list,growthrate_list,
+             Tp_list=None, ax_list=None, az_list=None,
+             mu='mu',response='response'):
+    dir = os.path.dirname(filename)
+    if dir:  # only call makedirs if there's actually a directory part
+        os.makedirs(dir, exist_ok=True)
+    response_array = np.array(response_list)
+    if response_array.ndim == 2:  # periodic orbit case
+        df = pd.DataFrame({
+            f'{mu}': mu_list,
+            f'{response}_min': response_array[:, 0],
+            f'{response}_max': response_array[:, 1],
+            'is_stable': is_stable_list,
+            'growthrate_real': np.real(growthrate_list),
+            'growthrate_imag': np.imag(growthrate_list)
+        })
+    else:
+        df = pd.DataFrame({
+            f'{mu}': mu_list,
+            f'{response}': response_list,
+            'is_stable': is_stable_list,
+            'growthrate_real': np.real(growthrate_list),
+            'growthrate_imag': np.imag(growthrate_list)
+        })
+    if Tp_list is not None and len(Tp_list) > 0:
+        df['Tp'] = Tp_list
+    if ax_list is not None and len(ax_list) > 0:
+        df['ax'] = ax_list
+    if az_list is not None and len(az_list) > 0:
+        df['az'] = az_list
+    df.to_csv(filename, index=False)
+
+def csv2data(filename):
+    df = pd.read_csv(filename)
+    mu_col, response_col = df.columns[0], df.columns[1]
+    
+    mu_list = df[mu_col].tolist()
+    is_stable_list = df['is_stable'].tolist()
+    growthrate_list = (df['growthrate_real'] + 1j * df['growthrate_imag']).tolist()
+
+    # detect periodic orbit case
+    if response_col.endswith('_min'):
+        response_name = response_col[:-4]  # strip '_min'
+        response_list = np.column_stack([
+            df[f'{response_name}_min'].to_numpy(),
+            df[f'{response_name}_max'].to_numpy()
+        ])
+    else:
+        response_name = response_col
+        response_list = df[response_col].tolist()
+    
+    Tp_list = df['Tp'].tolist() if 'Tp' in df.columns else None
+    ax_list = df['ax'].tolist() if 'ax' in df.columns else None
+    az_list = df['az'].tolist() if 'az' in df.columns else None
+    
+    return mu_list, response_list, is_stable_list, growthrate_list, Tp_list, ax_list, az_list
+
+#############################################
+######### Plot bifurcation diagram ##########
+
+def plot_branch(figax, bifurcation_info, label=None,
+                lw=1., color='k', unstableSolStyle="dashed", alpha=1.):
+    mu, response, is_stable, growthrate, Tp, ax, az = bifurcation_info
+    response = np.array(response)
+    if response.ndim==2: # solution is periodic orbit, plotting min. and max. lines
+        plot_bifurcation(figax, mu=mu, response=response[:,0], is_stable=is_stable, label=label,
+                        color=color, unstableSolStyle=unstableSolStyle, lw=lw, alpha=alpha)
+        plot_bifurcation(figax, mu=mu, response=response[:,1], is_stable=is_stable, label=None,
+                        color=color, unstableSolStyle=unstableSolStyle, lw=lw, alpha=alpha)
+    else:
+        plot_bifurcation(figax, mu=mu, response=response, is_stable=is_stable, label=label,
+                        color=color, unstableSolStyle=unstableSolStyle, lw=lw, alpha=alpha)
+
+def plot_bifurcation(ax,mu,response,is_stable,label=None,
+                     color='k',unstableSolStyle="dashed",lw=2,alpha=1):
+    segments = separate_into_segments(mu,response,is_stable)
     # print(segments)
     if len(segments)>1:
         # this bifurcation has both stable and unstable bifurcations
         # add label to first stable bifurcation
         addedLabel = False
         for i, segment in enumerate(segments):
-            if segment['isunstable']:
-                ax.plot(segment['mu'], segment['refes'],lw=lw,alpha=alpha,label=None, linestyle=unstableline, color=color, zorder=1)
-            else:
+            if segment['is_stable']:
                 if addedLabel:
-                    ax.plot(segment['mu'], segment['refes'],lw=lw,alpha=alpha,label=None, linestyle='-', color=color, zorder=1)
+                    ax.plot(segment['mu'], segment['response'],lw=lw,alpha=alpha,label=None, linestyle='-', color=color, zorder=1)
                 else:
-                    ax.plot(segment['mu'], segment['refes'],lw=lw,alpha=alpha,label=label, linestyle='-', color=color, zorder=1)
+                    ax.plot(segment['mu'], segment['response'],lw=lw,alpha=alpha,label=label, linestyle='-', color=color, zorder=1)
                     addedLabel = True
+            else:
+                ax.plot(segment['mu'], segment['response'],lw=lw,alpha=alpha,label=None, linestyle=unstableSolStyle, color=color, zorder=1)
     else:
         # this bifurcation has only one stable or unstable on the whole bifurcation
         # add label to anywhere 
         for segment in segments:
-            if segment['isunstable']:
-                ax.plot(segment['mu'], segment['refes'],lw=lw,alpha=alpha,label=label, linestyle=unstableline, color=color, zorder=1)
+            if segment['is_stable']:
+                ax.plot(segment['mu'], segment['response'],lw=lw,alpha=alpha,label=label, linestyle='-', color=color, zorder=1)
             else:
-                ax.plot(segment['mu'], segment['refes'],lw=lw,alpha=alpha,label=label, linestyle='-', color=color, zorder=1)
+                ax.plot(segment['mu'], segment['response'],lw=lw,alpha=alpha,label=label, linestyle=unstableSolStyle, color=color, zorder=1)
 
-def bifurcation_diagram(data_path, mu = "mu", response="Sh"):
-    data = {}
-    for key, branch_info in data_path.items():
-        mu_fulllist, response_fulllist, stability_fulllist, growthrate_fulllist = [], [], [], []
-        # Extract color metadata safely
-        color = branch_info.get('color', '#000000')
-        alpha = branch_info.get('alpha', 1.0)
-        isPO = branch_info.get('isPO', False)
-        showLabel = branch_info.get('showLabel', True)
-        merge_start = branch_info.get('merge_start', False)
-        merge_end = branch_info.get('merge_end', False)
-        scatter_first_point = branch_info.get('scatter_first_point', False)
-        scatter_end_point = branch_info.get('scatter_end_point', False)
-        scatter_stability_change = branch_info.get('scatter_stability_change', False)
-        steady_bifur_points = branch_info.get('steady_bifur_points', True)
-        hopf_bifur_points = branch_info.get('hopf_bifur_points', True)
+def separate_into_segments(mu,response,is_stable):
+    # Initialize lists for segments
+    segments = []
+    current_segment = {'mu': [], 'response': [], 'is_stable': is_stable[0]}
+    # Separate the data into segments based on the condition
+    for i in range(len(mu)):
+        if is_stable[i] == current_segment['is_stable']:
+            current_segment['mu'].append(mu[i])
+            current_segment['response'].append(response[i])
+        else:
+            segments.append(current_segment)
+            current_segment = {'mu': [mu[i-1], mu[i]], 'response': [response[i-1], response[i]], 'is_stable': is_stable[i]}
+    segments.append(current_segment)
+    return segments
 
-        for subdir, subsubdir in branch_info.items():
-            # Skip metadata keys during directory parsing
-            if subdir == 'color' \
-                or subdir == 'alpha' \
-                or subdir == 'isPO' \
-                or subdir == 'showLabel' \
-                or subdir == 'merge_start' or subdir == 'merge_end' \
-                or subdir == 'scatter_first_point' or subdir == 'scatter_end_point' \
-                or subdir == 'scatter_stability_change' or subdir == 'steady_bifur_points' or subdir == 'hopf_bifur_points':
-                continue
-            print(f"Loading {key} data from {subdir}...")
-            # mu_list, response_list = [], []
-            for dir, start, end, upward in subsubdir:
-                full_path = os.path.join(subdir, dir)
-                print(f"    Loading continuation data from {full_path}...")
-                mu_list, response_list, stability_list, growthrate_list = get_bifurcation(full_path, mu=mu, response=response, is_po=isPO)
+##########################################################
+#####  Plot scatters representing bifurcation points #####
 
-                mu_slice = mu_list[start:end]
-                response_slice = response_list[start:end]
-                stability_slice = stability_list[start:end]
-                growthrate_slice = growthrate_list[start:end]
+def add_scatter(figax, bifurcation_info, pointType='stabilityChange',
+                facecolors='None', marker='o', edgecolors='k', 
+                markerHopf='d', hopf_edgecolors='k', s=20., lw=1.):
+    """ pointType: 'first'/'last'/'stabilityChange'/'Hopf'/'Direct' """
+    mu, response, is_stable, growthrate, Tp, ax, az = bifurcation_info
+    response = np.array(response)
 
-                if not upward:
-                    mu_slice = mu_list[start:end][::-1]
-                    response_slice = response_list[start:end][::-1]
-                    stability_slice = stability_list[start:end][::-1]
-                    growthrate_slice = growthrate_list[start:end][::-1]
+    def is_Hopf(a:complex, b:complex):
+        return abs(a.imag) > 1e-6 or abs(b.imag) > 1e-6
 
-                mu_fulllist.extend(mu_slice)
-                response_fulllist.extend(response_slice)
-                stability_fulllist.extend(stability_slice)
-                growthrate_fulllist.extend(growthrate_slice)
-            # print(f"loaded mu_fulllist={mu_fulllist}")
-            # ...
-        mu_fulllist = np.array(mu_fulllist)
-        response_fulllist = np.array(response_fulllist)
-        stability_fulllist = np.array(stability_fulllist)
-        growthrate_fulllist = np.array(growthrate_fulllist)
-        
-        # add one more point to connect two min. and max. branch of PO
-        if branch_info.get('isPO', False) and branch_info.get('merge_start', False):
-            mu_fulllist = np.concatenate([[mu_fulllist[0]-(mu_fulllist[1]-mu_fulllist[0])], mu_fulllist])
-            val = 0.5 * (response_fulllist[0, 0] + response_fulllist[0, 1])
-            response_fulllist = np.concatenate([[[val, val]],response_fulllist], axis=0)
-            stability_fulllist = np.concatenate([[stability_fulllist[0]], stability_fulllist])
-            growthrate_fulllist = np.concatenate([[growthrate_fulllist[0]], growthrate_fulllist])
-        if branch_info.get('isPO', False) and branch_info.get('merge_end', False):
-            mu_fulllist = np.concatenate([mu_fulllist, [mu_fulllist[-1]-(mu_fulllist[-2]-mu_fulllist[-1])]])
-            val = 0.5 * (response_fulllist[-1, 0] + response_fulllist[-1, 1])
-            response_fulllist = np.concatenate([response_fulllist, [[val, val]]],axis=0)
-            stability_fulllist = np.concatenate([stability_fulllist, [stability_fulllist[-1]]])
-            growthrate_fulllist = np.concatenate([growthrate_fulllist, [growthrate_fulllist[-1]]])
-                
-        # collect dataset
-        data[key] = {
-            'mu': mu_fulllist,
-            'response': response_fulllist,
-            'Stability': stability_fulllist,
-            'Growthrate': growthrate_fulllist,
-            'color': color,
-            'alpha': alpha,
-            'isPO': isPO,
-            'showLabel': showLabel,
-            'merge_start': merge_start,
-            'merge_end': merge_end,
-            'scatter_first_point': scatter_first_point,
-            'scatter_end_point': scatter_end_point,
-            'scatter_stability_change': scatter_stability_change,
-            'steady_bifur_points': steady_bifur_points,
-            'hopf_bifur_points': hopf_bifur_points
-        }
-    return data
+    if response.ndim==2: # solution is periodic orbit
+        if pointType == 'first':
+            figax.scatter(mu[0], response[0,0],
+                        marker=marker, s=s, linewidths=lw, 
+                        facecolors=facecolors, edgecolors=edgecolors, 
+                        zorder=2)
+        elif pointType == 'last':
+            figax.scatter(mu[-1], response[-1,0],
+                        marker=marker, s=s, linewidths=lw, 
+                        facecolors=facecolors, edgecolors=edgecolors, 
+                        zorder=2)
+        else:
+            pass
+    else:
+        if pointType == 'first':
+            figax.scatter(mu[0], response[0],
+                        marker=marker, s=s, linewidths=lw, 
+                        facecolors=facecolors, edgecolors=edgecolors, 
+                        zorder=2)
+        elif pointType == 'last':
+            figax.scatter(mu[-1], response[-1],
+                        marker=marker, s=s, linewidths=lw, 
+                        facecolors=facecolors, edgecolors=edgecolors, 
+                        zorder=2)
+        else: # plot the direct and Hopf bifurcation points
+            for i in range(len(mu)-1):
+                if is_stable[i] != is_stable[i+1]: # break stability: Stable <-> Unstable
+                    if (pointType == 'Hopf' or pointType == 'stabilityChange') and is_Hopf(growthrate[i],growthrate[i+1]):
+                        figax.scatter(mu[i],response[i],marker=markerHopf,s=s,linewidths=lw, facecolors=facecolors, edgecolors=hopf_edgecolors, zorder=2)
+                    elif pointType == 'Direct' or pointType == 'stabilityChange':
+                        figax.scatter(mu[i],response[i],marker=marker,s=s,linewidths=lw, facecolors=facecolors, edgecolors=edgecolors, zorder=2)
 
-def plot_bifurcation_diagram(ax, data, lw=1):
-    for key, branch_info in data.items():
-        # print(f"Plotting bifurcation for {key}...")
-        if branch_info.get('isPO', False):
-            response_array = np.array(data[key]['response'])
-            plot_bifurcation(ax,
-                            mu=data[key]['mu'], 
-                            refes=response_array[:,0], # min value
-                            isunstable=data[key]['Stability'],
-                            label=f'{key}' if branch_info.get('showLabel', False) else None,
-                            color=data[key]['color'],
-                            unstableline="dashed",
-                            lw=lw,
-                            alpha=data[key]['alpha'])
-            plot_bifurcation(ax,
-                            mu=data[key]['mu'], 
-                            refes=response_array[:,1], # max value
-                            isunstable=data[key]['Stability'],
-                            label= None,
-                            color=data[key]['color'],
-                            unstableline="dashed",
-                            lw=lw,
-                            alpha=data[key]['alpha'])
-        else:    
-            plot_bifurcation(ax,
-                            mu=data[key]['mu'], 
-                            refes=data[key]['response'], 
-                            isunstable=data[key]['Stability'],
-                            label=f'{key}' if branch_info.get('showLabel', False) else None,
-                            color=data[key]['color'],
-                            unstableline="dashed",
-                            lw=lw,
-                            alpha=data[key]['alpha'])
-
-
-def add_scatter_bifurcation_points(ax,
-                                   mu,
-                                   refes,
-                                   stability,
-                                   leading_eigen,
-                                   marker_hopf='d',
-                                   marker='*',
-                                   label=None,
-                                   color='none',
-                                   hopf_edgecolors='k',
-                                   edgecolors='k',
-                                   s=20,
-                                   lw=1.,
-                                   steady_bifur_points=True,
-                                   hopf_bifur_points=True):
-    def break_stability_eigen(a, b):
-        if a.real*b.real < 0:
-            return True
-        return False
-    def break_stability(a, b):
-        if (a==True and b==False) or (a==False and b==True):
-            # print('break stability from ',a, ' to', b)
-            return True
-        return False
-    def Hopf_bifurcation(a, b):
-        if (a.imag>0 and abs(a.imag)>1e-6) or (b.imag>0 and abs(b.imag)>1e-6):
-            return True
-        return False
-    for i in range(len(mu)-1):
-        if break_stability(stability[i],stability[i+1]):
-            if hopf_bifur_points and Hopf_bifurcation(leading_eigen[i],leading_eigen[i+1]):
-                ax.scatter(mu[i],refes[i],marker=marker_hopf,s=s,linewidths=lw, color=color, edgecolors=hopf_edgecolors, zorder=2)
-            elif steady_bifur_points:
-                ax.scatter(mu[i],refes[i],marker=marker,s=s,linewidths=lw, color=color, edgecolors=edgecolors, zorder=2)
-
-def plot_scatter_for_stability_change(ax, 
-                                      data, 
-                                      marker_hopf='d', 
-                                      color_hopf='k', 
-                                      marker='o', 
-                                      color='k', 
-                                      s=20, 
-                                      lw=1.):
-    for key, branch_info in data.items():
-        if branch_info.get('scatter_stability_change', False):
-            steady_bifur_points = branch_info.get('steady_bifur_points', False)
-            hopf_bifur_points = branch_info.get('hopf_bifur_points', False)
-            add_scatter_bifurcation_points(ax, 
-                                        mu=data[key]['mu'], 
-                                        refes=data[key]['response'],
-                                        stability=data[key]['Stability'], 
-                                        leading_eigen=data[key]['Growthrate'],
-                                        marker_hopf=marker_hopf, 
-                                        marker=marker,
-                                        color='none',
-                                        hopf_edgecolors=color_hopf, 
-                                        edgecolors='k', 
-                                        s=s,
-                                        lw=lw,
-                                        steady_bifur_points=steady_bifur_points,
-                                        hopf_bifur_points=hopf_bifur_points)
-
-def plot_scatter_for_first_point(ax, data, marker='o', color='k', s=20, lw=1.):
-    for key, branch_info in data.items():
-        PO_branch = branch_info.get('isPO', False)
-        scatter_first_point = branch_info.get('scatter_first_point', False)
-        local_scatter_first_enabled = scatter_first_point[0] if isinstance(scatter_first_point, tuple) and len(scatter_first_point) > 0 else scatter_first_point
-        local_marker  = scatter_first_point[1] if isinstance(scatter_first_point, tuple) and len(scatter_first_point) > 1 else marker
-        local_color   = scatter_first_point[2] if isinstance(scatter_first_point, tuple) and len(scatter_first_point) > 2 else color
-        if local_scatter_first_enabled:
-            # print(f"Branch {key}, first-point scatter {scatter_first_point} local_marker={local_marker} and local_color={local_color}")
-            add_scatter_first_point(ax, 
-                                    mu=data[key]['mu'], 
-                                    refes=data[key]['response'][:,0] if PO_branch else data[key]['response'],
-                                    marker=local_marker, 
-                                    color='none', 
-                                    edgecolors=local_color, 
-                                    s=s,
-                                    lw=lw)
-            
-        scatter_end_point = branch_info.get('scatter_end_point', False)
-        local_scatter_end_enabled = scatter_end_point[0] if isinstance(scatter_end_point, tuple) and len(scatter_end_point) > 0 else scatter_end_point
-        local_marker  = scatter_end_point[1] if isinstance(scatter_end_point, tuple) and len(scatter_end_point) > 1 else marker
-        local_color   = scatter_end_point[2] if isinstance(scatter_end_point, tuple) and len(scatter_end_point) > 2 else color
-        if local_scatter_end_enabled:
-            # print(f"Branch {key}, end-point scatter local_marker={local_marker} and local_color={local_color}")
-            add_scatter_first_point(ax, 
-                                    mu=data[key]['mu'][::-1], 
-                                    refes=data[key]['response'][::-1][:,0] if PO_branch else data[key]['response'][::-1],
-                                    marker=local_marker, 
-                                    color='none', 
-                                    edgecolors=local_color, 
-                                    s=s,
-                                    lw=lw)
-
-def add_scatter_first_point(ax,
-                            mu,
-                            refes,
-                            marker='*',
-                            label=None,
-                            color='none', 
-                            edgecolors='k',
-                            s=20,
-                            lw=1.):
-    ax.scatter(mu[0],
-               refes[0],
-               marker=marker,
-               s=s, 
-               linewidths=lw, 
-               facecolors=color, 
-               edgecolors=edgecolors, 
-               zorder=2)
