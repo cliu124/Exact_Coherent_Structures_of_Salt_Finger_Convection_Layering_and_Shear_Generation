@@ -36,4 +36,4 @@ We save information of each bifurcation in `csv` files with the following format
 Lx,Sh,is_stable,growthrate_real,growthrate_imag,Tp,ax,az
 ...
 ```
-Here, columns from left to right present the continuous parameter `Lx`, the response in bifurcation diagram `Sh`, the stability of solution (`True`: unstable, `False`: stable), real and imaginary parts of fastest growth rate `growthrate_real`/`growthrate_imag` and optional quantities: time period `Tp`, horizontal translation `ax` normalized by domain width $L_x$, vertical translation `az` normalized by domain height $L_z$.
+Here, columns from left to right present the continuous parameter `Lx`, the response in bifurcation diagram `Sh`, the stability of solution (`True`: unstable, `False`: stable), real and imaginary parts of fastest growth rate (`growthrate_real`,`growthrate_imag`) and additional parameters of traveling waves and relative periodic orbits: time period `Tp`, horizontal translation `ax` normalized by domain width $L_x$, vertical translation `az` normalized by domain height $L_z$.
