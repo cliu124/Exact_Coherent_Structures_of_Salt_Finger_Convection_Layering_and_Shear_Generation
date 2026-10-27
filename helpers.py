@@ -13,7 +13,7 @@ plt.rcParams.update({
     'text.usetex': True,
     'font.family': 'serif',
     'font.size': 8,              # Standard 8 pt text for APS single-column
-    # 'mathtext.fontset': 'stix',
+    'mathtext.fontset': 'stix',
     # 'axes.spines.top': False,     # Removes unnecessary top border line
     # 'axes.spines.right': False,   # Removes unnecessary right border line
     'pdf.fonttype': 42            # Keeps text editable in vector PDFs
@@ -32,7 +32,7 @@ from pathlib import Path
 
 # unstable criteria
 unstable_criteria = 8e-3 # growth rate threshold to consider a mode unstable, thermal diffusivity scale
-
+unstable_criteria = 0
 
 def load_file(path):
     if os.path.exists(path):
@@ -453,7 +453,9 @@ def add_scatter(figax, bifurcation_info, pointType='stabilityChange',
     response = np.array(response)
 
     def is_Hopf(a:complex, b:complex):
-        return abs(a.imag) > 1e-6 or abs(b.imag) > 1e-6
+        if a.real*b.real < 0:
+            return (a.real>unstable_criteria and abs(a.imag)>1e-6) or (b.real>unstable_criteria and abs(b.imag)>1e-6)
+        return False
 
     if response.ndim==2: # solution is periodic orbit
         if pointType == 'first':
