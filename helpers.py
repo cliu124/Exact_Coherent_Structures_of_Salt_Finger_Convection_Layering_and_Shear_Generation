@@ -30,9 +30,7 @@ import pickle
 import glob
 from pathlib import Path
 
-# unstable criteria
-unstable_criteria = 8e-3 # growth rate threshold to consider a mode unstable, thermal diffusivity scale
-unstable_criteria = 0
+unstable_criteria = 0 # growth rate threshold to consider a mode unstable
 
 def load_file(path):
     if os.path.exists(path):
